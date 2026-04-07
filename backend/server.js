@@ -2,10 +2,14 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import runRoutes from "./routes/runRoutes.js";
+import connectDB from "./config/db.js";
 
 dotenv.config();
 
 const app = express();
+
+//  CONNECT TO MONGODB
+connectDB();
 
 // Middleware
 app.use(cors());
