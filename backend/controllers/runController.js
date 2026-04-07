@@ -1,4 +1,5 @@
 import { runCodeService } from "../services/judge0Service.js";
+import Submission from "../models/Submission.js";
 
 export const runCode = async (req, res) => {
   const { code, language, input, testCases } = req.body;
@@ -60,6 +61,16 @@ export const runCode = async (req, res) => {
             passed: false,
           });
 
+          // ✅ SAVE FAILED TESTCASE RUN
+          await Submission.create({
+            code,
+            language,
+            mode: "testcases",
+            testResults: results,
+            passed: passedCount,
+            total: testCases.length,
+          });
+
           return res.json({
             success: true,
             mode: "testcases",
@@ -71,6 +82,16 @@ export const runCode = async (req, res) => {
           });
         }
       }
+
+      // ✅ SAVE SUCCESS TESTCASE RUN
+      await Submission.create({
+        code,
+        language,
+        mode: "testcases",
+        testResults: results,
+        passed: passedCount,
+        total: testCases.length,
+      });
 
       return res.json({
         success: true,
@@ -90,6 +111,16 @@ export const runCode = async (req, res) => {
       languageMap[language],
       input || ""
     );
+
+    // ✅ SAVE SINGLE RUN
+    await Submission.create({
+      code,
+      language,
+      mode: "single",
+      input: input || "",
+      output: result.stdout || "",
+      error: result.stderr || result.compile_output || "",
+    });
 
     return res.json({
       success: true,

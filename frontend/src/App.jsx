@@ -1,95 +1,190 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LanguageSelector from "./components/LanguageSelector";
 import CodeEditor from "./components/CodeEditor";
-import { runCode } from "./services/api";
+import { runCode, getHistory } from "./services/api";
 
 function App() {
   const [code, setCode] = useState("print('hello world')");
   const [output, setOutput] = useState("");
   const [language, setLanguage] = useState("python");
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
 
   const handleRun = async () => {
     setLoading(true);
-    const result = await runCode(code, language);
-    setOutput(result);
+    try {
+      const result = await runCode(code, language);
+      setOutput(result);
+      fetchHistory();
+    } catch (err) {
+      setOutput("Error running code");
+    }
     setLoading(false);
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const data = await getHistory();
+      setHistory(data);
+    } catch (err) {
+      console.log("Error fetching history");
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  // 🧠 Helper for clean timestamp
+  const formatTime = (time) => {
+    return new Date(time).toLocaleString();
   };
 
   return (
     <div
       style={{
+        display: "flex",
+        height: "100vh",
         backgroundColor: "#fdf6f9",
-        minHeight: "100vh",
-        padding: "30px",
         fontFamily: "sans-serif",
       }}
     >
-      <h1
-        style={{
-          textAlign: "center",
-          color: "#d17b88",
-          marginBottom: "20px",
-        }}
-      >
-        Online Code Compiler
-      </h1>
-
-      {/* Language Selector */}
-      <LanguageSelector language={language} setLanguage={setLanguage} />
-
-      {/* Editor Card */}
+      {/* HISTORY SIDEBAR */}
       <div
         style={{
-          background: "#ffeef2",
-          padding: "20px",
-          borderRadius: "20px",
-          border: "1px solid #f8cdd4",
-          boxShadow: "0 8px 25px rgba(244, 166, 176, 0.2)",
-        }}
-      >
-        <CodeEditor code={code} setCode={setCode} />
-      </div>
-
-      {/* Run Button */}
-      <div style={{ textAlign: "center" }}>
-        <button
-          onClick={handleRun}
-          disabled={loading}
-          style={{
-            marginTop: "20px",
-            padding: "10px 25px",
-            background: "#ff8fa3",
-            border: "none",
-            borderRadius: "25px",
-            color: "white",
-            fontWeight: "bold",
-            cursor: loading ? "not-allowed" : "pointer",
-            boxShadow: "0 4px 10px rgba(255, 143, 163, 0.4)",
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? "Running..." : "Run Code"}
-        </button>
-      </div>
-
-      {/* Output Card */}
-      <div
-        style={{
-          marginTop: "25px",
+          width: "250px",
           background: "#fff",
-          padding: "20px",
-          borderRadius: "20px",
-          border: "1px solid #f8cdd4",
-          boxShadow: "0 8px 25px rgba(0,0,0,0.05)",
+          borderRight: "1px solid #f8cdd4",
+          padding: "15px",
+          overflowY: "auto",
         }}
       >
         <h3 style={{ color: "#d17b88", marginBottom: "10px" }}>
-          Output
+          History
         </h3>
-        <pre style={{ color: "#444" }}>
-          {output || "Your output will appear here..."}
-        </pre>
+
+        {history.map((item, index) => (
+          <div
+            key={index}
+            onClick={() => {
+              setCode(item.code);
+              setOutput(item.output || item.error);
+              setLanguage(item.language);
+            }}
+            style={{
+              padding: "10px",
+              marginBottom: "10px",
+              borderRadius: "10px",
+              cursor: "pointer",
+              background: "#ffeef2",
+              border: "1px solid #f8cdd4",
+              fontSize: "12px",
+            }}
+          >
+            {/* Language */}
+            <div><b>{item.language}</b></div>
+
+            {/* Status */}
+            <div style={{ fontSize: "10px" }}>
+              {item.error ? (
+                <span style={{ color: "red" }}>❌ Error</span>
+              ) : (
+                <span style={{ color: "green" }}>✅ Success</span>
+              )}
+            </div>
+
+            {/* Timestamp */}
+            <div style={{ fontSize: "10px", color: "#888" }}>
+              {formatTime(item.createdAt)}
+            </div>
+
+            {/* Code preview */}
+            <div>
+              {item.code.slice(0, 30)}...
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* MAIN AREA */}
+      <div
+        style={{
+          flex: 1,
+          padding: "20px",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Top Bar */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: "20px",
+          }}
+        >
+          <h1 style={{ color: "#d17b88" }}>Online Code Compiler</h1>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <LanguageSelector
+              language={language}
+              setLanguage={setLanguage}
+            />
+
+            <button
+              onClick={handleRun}
+              disabled={loading}
+              style={{
+                padding: "10px 20px",
+                background: "#ff8fa3",
+                border: "none",
+                borderRadius: "25px",
+                color: "white",
+                fontWeight: "bold",
+                cursor: "pointer",
+                opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {loading ? "Running..." : "Run ▶"}
+            </button>
+          </div>
+        </div>
+
+        {/* Editor + Output */}
+        <div style={{ display: "flex", gap: "20px", flex: 1 }}>
+          {/* Editor */}
+          <div
+            style={{
+              flex: 1,
+              background: "#ffeef2",
+              padding: "20px",
+              borderRadius: "20px",
+              border: "1px solid #f8cdd4",
+            }}
+          >
+            <CodeEditor
+              code={code}
+              setCode={setCode}
+              language={language}
+            />
+          </div>
+
+          {/* Output */}
+          <div
+            style={{
+              flex: 1,
+              background: "#fff",
+              padding: "20px",
+              borderRadius: "20px",
+              border: "1px solid #f8cdd4",
+            }}
+          >
+            <h3 style={{ color: "#d17b88" }}>Output</h3>
+            <pre>
+              {output || "Your output will appear here..."}
+            </pre>
+          </div>
+        </div>
       </div>
     </div>
   );
